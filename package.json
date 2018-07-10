@@ -1,0 +1,12 @@
+{
+  "name": "air-html",
+  "version": "0.1.0",
+  "description": "",
+  "main": "/src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "patch": "npm version patch && npm publish && git push origin"
+  },
+  "author": "/ai",
+  "license": "ISC"
+}
