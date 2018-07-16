@@ -1,12 +1,26 @@
 export class View {
 
-    constructor({ key, node, resources, pid, ...props } = {}) {
+    constructor({ key, node = document.createElement("div"), resources, pid, ...props } = {}) {
         this.pid = pid;
-        this.target = node;
+        if(node.tagName === "img") {
+            this.target = resources[0].image;
+        }
+        else {
+            this.target = node.cloneNode(true);
+        }
     }
 
     add(...args) {
-        this.target.appendChild(...args.map( ({ target }) => !target.parentNode && target ));
+        args.map( ({ target, pid }) => {
+            const place = this.target.querySelector(`[data-pid="${pid}"]`);
+            if(place) {
+                place.parentNode.replaceChild( target, place );
+                debugger;
+            }
+            else {
+                this.target.append( target );
+            }
+        } );
     }
 
     remove() {
