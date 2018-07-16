@@ -1,6 +1,6 @@
 export class View {
 
-    constructor({ key, node = document.createElement("div"), resources, pid, ...props } = {}) {
+    constructor({ key, node = document.createElement("div"), resources, pid, handlers, ...props } = {}, hook) {
         this.pid = pid;
         if(node.tagName === "img") {
             this.target = resources[0].image;
@@ -8,6 +8,9 @@ export class View {
         else {
             this.target = node.cloneNode(true);
         }
+        handlers.map( ({ name, hn }) =>
+            this.target.addEventListener(name, (e) => hn(e, { resources, pid, key, ...props}, hook), false)
+        );
     }
 
     add(...args) {
@@ -15,7 +18,6 @@ export class View {
             const place = this.target.querySelector(`[data-pid="${pid}"]`);
             if(place) {
                 place.parentNode.replaceChild( target, place );
-                debugger;
             }
             else {
                 this.target.append( target );
