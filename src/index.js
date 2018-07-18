@@ -1,6 +1,6 @@
 export class View {
 
-    constructor({ key, node = document.createElement("div"), resources, pid, handlers, ...props } = {}, hook) {
+    constructor({ key, node = document.createElement("div"), resources, pid, handlers = [], ...props } = {}, model) {
         this.pid = pid;
         if(node.tagName === "img") {
             this.target = resources[0].image;
@@ -8,9 +8,23 @@ export class View {
         else {
             this.target = node.cloneNode(true);
         }
-        handlers.map( ({ name, hn }) =>
-            this.target.addEventListener(name, (e) => hn(e, { resources, pid, key, ...props}, hook), false)
-        );
+        this.props = { key, resources, pid, ...props};
+        this.handlers = handlers;
+        if(handlers.length) {
+            if(!model) {
+                throw "event processing requires an active model";
+            }
+            else {
+                this.handler = model.at( () => {} );
+                handlers.map( ({ name }) => this.target.addEventListener(name, this, false));
+            }
+        }
+    }
+
+    handleEvent(event) {
+        this.handlers
+            .find( ({ name }) => event.type === name )
+            .hn(event, this.props, this.handler);
     }
 
     add(...args) {
@@ -27,6 +41,13 @@ export class View {
 
     remove() {
         this.target.remove();
+    }
+
+    clear() {
+        if(this.handler) {
+            this.handlers.map( ({ name }) => this.target.removeEventListener(name, this, false));
+            this.handler();
+        }
     }
 
 }
