@@ -2,13 +2,15 @@ export class View {
 
     constructor({ key, node = document.createElement("div"), resources, pid, handlers = [], ...props } = {}, model) {
         this.pid = pid;
+        this.key = key;
+
         if(node.tagName === "img") {
             this.target = resources[0].image;
         }
         else {
             this.target = node.cloneNode(true);
         }
-        this.props = { key, resources, pid, ...props};
+        this.props = { resources, pid, ...props };
         this.handlers = handlers;
         if(handlers.length) {
             if(!model) {
@@ -31,9 +33,10 @@ export class View {
     }
 
     handleEvent(event) {
+        debugger;
         this.handlers
             .find( ({ name }) => event.type === name )
-            .hn(event, this.props, ({...args} = {}) => this.handler({ dissolve: false, ...args }));
+            .hn(event, this.props, ({...args} = {}) => this.handler({ dissolve: false, ...args }), this.key);
     }
 
     add(...args) {
