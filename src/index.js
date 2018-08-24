@@ -1,16 +1,77 @@
+(function (arr) {
+    arr.forEach(function (item) {
+        if (item.hasOwnProperty('before')) {
+            return;
+        }
+        Object.defineProperty(item, 'before', {
+            configurable: true,
+            enumerable: true,
+            writable: true,
+            value: function before() {
+                var argArr = Array.prototype.slice.call(arguments),
+                    docFrag = document.createDocumentFragment();
+
+                argArr.forEach(function (argItem) {
+                    var isNode = argItem instanceof Node;
+                    docFrag.appendChild(isNode ? argItem : document.createTextNode(String(argItem)));
+                });
+
+                this.parentNode.insertBefore(docFrag, this);
+            }
+        });
+    });
+})([
+    Element.prototype,
+    CharacterData.prototype,
+    DocumentType.prototype
+]);
+
+function gtargeting(parent) {
+    const res = {};
+    [...parent.childNodes].map(node => {
+        if(node.nodeType === 3) {
+            let last = 0;
+            const nodes = [];
+            node.wholeText.replace(/(\$\{\s*argv\.?(.*?)\s*\})/g, (_, all, name, pfx) => {
+
+                const text = new Text(node.wholeText.substring(last, pfx));
+                const target = new Text(`\${${name}\}`);
+
+                res[name || "___default___"] = target;
+
+                nodes.push(text, target);
+
+                last = pfx + all.length;
+            });
+
+            if(nodes.length) {
+                if(last !== node.wholeText.length) {
+                    nodes.push(new Text(node.wholeText.substring(last)));
+                }
+                node.before(...nodes);
+                node.remove();
+            }
+        }
+    });
+    return res;
+}
+
 export class View {
 
     constructor({ key, node = document.createElement("div"), resources, pid, handlers = [], ...props } = {}, model) {
         this.pid = pid;
         this.key = key;
 
+        let targeting = {};
+
         if(node.tagName === "img") {
             this.target = resources[0].image;
         }
         else {
             this.target = node.cloneNode(true);
+            targeting = gtargeting(this.target);
         }
-        this.props = { resources, pid, ...props };
+        this.props = { resources, pid, ...props, targeting };
         this.handlers = handlers;
         if(handlers.length) {
             if(!model) {
