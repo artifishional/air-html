@@ -26,8 +26,7 @@
     DocumentType.prototype
 ]);
 
-function gtargeting(parent) {
-    const res = {};
+function gtargeting(parent, res = {}) {
     [...parent.childNodes].map(node => {
         if(node.nodeType === 3) {
             let last = 0;
@@ -51,6 +50,9 @@ function gtargeting(parent) {
                 node.before(...nodes);
                 node.remove();
             }
+        }
+        else if(node.nodeType === 1) {
+            gtargeting(node, res);
         }
     });
     return res;
