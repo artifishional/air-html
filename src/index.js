@@ -26,17 +26,17 @@
     DocumentType.prototype
 ]);
 
-function gtargeting(parent, res = {}) {
+function gtargeting(parent, res = []) {
     [...parent.childNodes].map(node => {
         if(node.nodeType === 3) {
             let last = 0;
             const nodes = [];
-            node.wholeText.replace(/(\$\{\s*argv\.?(.*?)\s*\})/g, (_, all, name, pfx) => {
+            node.wholeText.replace(/(\$\{\s*(argv|lang)\.?(.*?)\s*\})/g, (_, all, type, name, pfx) => {
 
                 const text = new Text(node.wholeText.substring(last, pfx));
                 const target = new Text(`\${${name}\}`);
-
-                res[name || "___default___"] = target;
+                
+                res.push({ name: name || "___default___", target, type });
 
                 nodes.push(text, target);
 
@@ -64,7 +64,7 @@ export class View {
         this.pid = pid;
         this.key = key;
 
-        let targeting = {};
+        let targeting = [];
 
         if(node.tagName === "img") {
             this.target = resources[0].image;
