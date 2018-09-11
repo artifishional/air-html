@@ -26,17 +26,31 @@
     DocumentType.prototype
 ]);
 
+const reg = /(\${\s*(argv|lang|intl)(?:\.?([a-zA-Z0-9\-_]+))?(?:,argv(?:\.([a-zA-Z0-9\-_]+))?)?\s*})/g;
+
 function gtargeting(parent, res = []) {
     [...parent.childNodes].map(node => {
         if(node.nodeType === 3) {
             let last = 0;
             const nodes = [];
-            node.wholeText.replace(/(\$\{\s*(argv|lang)\.?(.*?)\s*\})/g, (_, all, type, name, pfx) => {
+            node.wholeText.replace(reg, (_, all, type, name, param, pfx) => {
+
+                if(Number.isInteger(name)) {
+                    pfx = name;
+                    name = "";
+                    param = "";
+                }
+                else if(Number.isInteger(param)) {
+                    pfx = param;
+                    param = "";
+                }
+
+                param = param || "___default___";
 
                 const text = new Text(node.wholeText.substring(last, pfx));
                 const target = new Text(`\${${name}\}`);
                 
-                res.push({ name: name || "___default___", target, type });
+                res.push({ name: name || "___default___", target, type, param });
 
                 nodes.push(text, target);
 
