@@ -26,6 +26,39 @@
     DocumentType.prototype
 ]);
 
+function gtemplate(str = "", ct = 0) {
+    const len = str.length;
+    let res = [];
+    let srt = 0;
+    let pfx = 0;
+    let layer = 0;
+    while (ct < len) {
+        if(str[ct] === "$" && str[ct+1] === "{") {
+            if(!layer) {
+                if(pfx < ct) {
+                    res.push( { type: "other", vl: str.substring(pfx, ct) } );
+                }
+                srt = ct;
+            }
+            layer ++ ;
+        }
+        if(str[ct] === "}") {
+            if(layer > 0) {
+                layer -- ;
+            }
+            if(!layer) {
+                pfx = ct+1;
+                res.push( { type: "template", vl: str.substring(srt, pfx) } );
+            }
+        }
+        ct ++ ;
+    }
+    if(pfx < ct) {
+        res.push( { type: "other", vl: str.substring(pfx, ct) } );
+    }
+    return res;
+}
+
 const reg = /(\${\s*(argv|lang|intl)(?:\.?([a-zA-Z0-9\-_]+))?(?:,argv(?:\.([a-zA-Z0-9\-_]+))?)?\s*})/g;
 
 function gtargeting(parent, res = []) {
@@ -33,6 +66,22 @@ function gtargeting(parent, res = []) {
         if(node.nodeType === 3) {
             let last = 0;
             const nodes = [];
+
+            const targeting = gtemplate(node.wholeText)
+                .map( ({pfx, template}) => ({
+                    template,
+                    target: new Text(template),
+                    pfx
+                }) );
+
+            const nodes = targeting.reduce( ({pfx: st, nodes}, { template, target, pfx }) => {
+
+                if() {
+
+                }
+
+            }, { pfx: 0, nodes: [] });
+
             node.wholeText.replace(reg, (_, all, type, name, param, pfx) => {
 
                 if(Number.isInteger(name)) {
@@ -50,7 +99,7 @@ function gtargeting(parent, res = []) {
                 const text = new Text(node.wholeText.substring(last, pfx));
                 const target = new Text(`\${${name}\}`);
                 
-                res.push({ name: name || "___default___", target, type, param });
+                res.push({ template, target });
 
                 nodes.push(text, target);
 
