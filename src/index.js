@@ -33,7 +33,7 @@ function gtemplate(str = "", ct = 0) {
     let pfx = 0;
     let layer = 0;
     while (ct < len) {
-        if(str[ct] === "$" && str[ct+1] === "{") {
+        if(str[ct] === "{" && str[ct-1] !== "\\") {
             if(!layer) {
                 if(pfx < ct) {
                     res.push( { type: "other", vl: str.substring(pfx, ct) } );
@@ -42,7 +42,7 @@ function gtemplate(str = "", ct = 0) {
             }
             layer ++ ;
         }
-        if(str[ct] === "}") {
+        if(str[ct] === "}" && str[ct-1] !== "\\") {
             if(layer > 0) {
                 layer -- ;
             }
@@ -59,58 +59,16 @@ function gtemplate(str = "", ct = 0) {
     return res;
 }
 
-const reg = /(\${\s*(argv|lang|intl)(?:\.?([a-zA-Z0-9\-_]+))?(?:,argv(?:\.([a-zA-Z0-9\-_]+))?)?\s*})/g;
+//const reg = /(\${\s*(argv|lang|intl)(?:\.?([a-zA-Z0-9\-_]+))?(?:,argv(?:\.([a-zA-Z0-9\-_]+))?)?\s*})/g;
 
 function gtargeting(parent, res = []) {
     [...parent.childNodes].map(node => {
         if(node.nodeType === 3) {
-            let last = 0;
-            const nodes = [];
-
-            const targeting = gtemplate(node.wholeText)
-                .map( ({pfx, template}) => ({
-                    template,
-                    target: new Text(template),
-                    pfx
-                }) );
-
-            const nodes = targeting.reduce( ({pfx: st, nodes}, { template, target, pfx }) => {
-
-                if() {
-
-                }
-
-            }, { pfx: 0, nodes: [] });
-
-            node.wholeText.replace(reg, (_, all, type, name, param, pfx) => {
-
-                if(Number.isInteger(name)) {
-                    pfx = name;
-                    name = "";
-                    param = "";
-                }
-                else if(Number.isInteger(param)) {
-                    pfx = param;
-                    param = "";
-                }
-
-                param = param || "___default___";
-
-                const text = new Text(node.wholeText.substring(last, pfx));
-                const target = new Text(`\${${name}\}`);
-                
-                res.push({ template, target });
-
-                nodes.push(text, target);
-
-                last = pfx + all.length;
-            });
-
-            if(nodes.length) {
-                if(last !== node.wholeText.length) {
-                    nodes.push(new Text(node.wholeText.substring(last)));
-                }
-                node.before(...nodes);
+            const nodes = gtemplate(node.nodeValue);
+            const targeting = nodes.filter((type) => type === "template");
+            res.push(...targeting);
+            if(targeting.length) {
+                node.before(...nodes.map(({vl}) => new Text(vl)));
                 node.remove();
             }
         }
