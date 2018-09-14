@@ -33,7 +33,7 @@ function gtemplate(str = "", ct = 0) {
     let pfx = 0;
     let layer = 0;
     while (ct < len) {
-        if(str[ct] === "{" && str[ct-1] !== "\\") {
+        if(str[ct] === "{") {
             if(!layer) {
                 if(pfx < ct) {
                     res.push( { type: "other", vl: str.substring(pfx, ct) } );
@@ -42,7 +42,7 @@ function gtemplate(str = "", ct = 0) {
             }
             layer ++ ;
         }
-        if(str[ct] === "}" && str[ct-1] !== "\\") {
+        if(str[ct] === "}") {
             if(layer > 0) {
                 layer -- ;
             }
@@ -79,6 +79,46 @@ function gtargeting(parent, res = []) {
     return res;
 }
 
+function templater(vl, intl, argv, resources) {
+    if(vl.indexOf("intl") === 4) {
+        const [_, name, template] = vl.match(/^{intl.([a-zA-Z0-9_\-]+),(.*)}$/);
+        const format = resources.find(({ type, name: x }) => type === "intl" && name === x);
+        format.currency = format.currency || intl.currency;
+        if(!isNaN(+template)) {
+            const formatter = intl.NumberFormat(intl.locale, format);
+            return formatter.format(+template);
+        }
+        else {
+            const formatter = intl.NumberFormat(intl.locale, { currency: format.currency });
+            const templates = gtemplate.map( ({ vl, type }) => {
+                if(type === "template") {
+                    return templater(vl, intl, argv, resources);
+                }
+                else {
+                    return vl;
+                }
+            } );
+            if(templates.some(x => x === null)) {
+                return null;
+            }
+            return formatter.format(0).replace( "0", templates.join("") );
+        }
+    }
+    else if(vl.indexOf("argv") === 4) {
+        const [_, name = "__default__"] = vl.match(/^{argv(?:\.([a-zA-Z0-9_\-]+))?}$/);
+        if(argv.hasOwnProperty(name)) {
+            return argv.name;
+        }
+        else {
+            return null;
+        }
+    }
+    else if(vl.indexOf("lang") === 4) {
+        const [_, name] = vl.match(/^{lang\.([a-zA-Z0-9_\-]+)}$/);
+        return resources.find(({ type, name: x }) => type === "lang" && name === x);
+    }
+}
+
 export class View {
 
     constructor({ key, node = document.createElement("div"), resources, pid, handlers = [], ...props } = {}, model) {
@@ -105,6 +145,13 @@ export class View {
                 handlers.map( ({ name }) => this.target.addEventListener(name, this, false));
             }
         }
+    }
+
+    setprops(argv, intl) {
+        this.props.targeting.map( ({ vl, target }) => {
+            const value = templater(vl, intl, argv, this.props.resources);
+            value !== null && (target.nodeValue = value);
+        } );
     }
 
     query(selector) {
