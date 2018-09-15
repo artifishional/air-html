@@ -1,3 +1,6 @@
+const { NumberFormat } = Intl;
+const DEFAULT = "___default___";
+
 (function (arr) {
     arr.forEach(function (item) {
         if (item.hasOwnProperty('before')) {
@@ -59,16 +62,16 @@ function gtemplate(str = "", ct = 0) {
     return res;
 }
 
-//const reg = /(\${\s*(argv|lang|intl)(?:\.?([a-zA-Z0-9\-_]+))?(?:,argv(?:\.([a-zA-Z0-9\-_]+))?)?\s*})/g;
-
 function gtargeting(parent, res = []) {
     [...parent.childNodes].map(node => {
-        if(node.nodeType === 3) {
-            const nodes = gtemplate(node.nodeValue);
-            const targeting = nodes.filter((type) => type === "template");
+        if(node.tagName === "style") { }
+        else if(node.nodeType === 3) {
+            const nodes = gtemplate(node.nodeValue)
+                .map( ({ vl, type }) => ({ vl, type, target: new Text(vl) }) );
+            const targeting = nodes.filter(({type}) => type === "template");
             res.push(...targeting);
             if(targeting.length) {
-                node.before(...nodes.map(({vl}) => new Text(vl)));
+                node.before(...nodes.map(({target}) => target));
                 node.remove();
             }
         }
@@ -79,18 +82,35 @@ function gtargeting(parent, res = []) {
     return res;
 }
 
-function templater(vl, intl, argv, resources) {
-    if(vl.indexOf("intl") === 4) {
+function getfrompath(argv, path) {
+    return path.reduce((argv, name) => {
+        if(argv && argv.hasOwnProperty(name)) {
+            return argv[name];
+        }
+        else {
+            return null;
+        }
+    }, argv);
+}
+
+function templater(vl, intl = null, argv, resources) {
+    if(vl.indexOf("intl") === 1) {
+        if(!intl) return null;
         const [_, name, template] = vl.match(/^{intl.([a-zA-Z0-9_\-]+),(.*)}$/);
-        const format = resources.find(({ type, name: x }) => type === "intl" && name === x);
+        const format = resources.find(({ type, name: x }) => type === "intl" && name === x).data;
         format.currency = format.currency || intl.currency;
         if(!isNaN(+template)) {
-            const formatter = intl.NumberFormat(intl.locale, format);
+            const formatter = new NumberFormat(intl.locale, format);
             return formatter.format(+template);
         }
         else {
-            const formatter = intl.NumberFormat(intl.locale, { currency: format.currency });
-            const templates = gtemplate.map( ({ vl, type }) => {
+            const formatter = new NumberFormat(intl.locale, {
+                ...format,
+                minimumIntegerDigits: 1,
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0,
+            });
+            const templates = gtemplate(template).map( ({ vl, type }) => {
                 if(type === "template") {
                     return templater(vl, intl, argv, resources);
                 }
@@ -104,19 +124,18 @@ function templater(vl, intl, argv, resources) {
             return formatter.format(0).replace( "0", templates.join("") );
         }
     }
-    else if(vl.indexOf("argv") === 4) {
-        const [_, name = "__default__"] = vl.match(/^{argv(?:\.([a-zA-Z0-9_\-]+))?}$/);
-        if(argv.hasOwnProperty(name)) {
-            return argv.name;
-        }
-        else {
-            return null;
-        }
+    else if(vl.indexOf("argv") === 1) {
+        let [_, name] = vl.match(/^{argv((?:\.[a-zA-Z0-9_\-]+)*)}$/);
+        name = name || DEFAULT;
+        const path = name.split(".").filter(Boolean);
+        return getfrompath(argv, path);
     }
-    else if(vl.indexOf("lang") === 4) {
+    else if(vl.indexOf("lang") === 1) {
+        if(!intl) return null;
         const [_, name] = vl.match(/^{lang\.([a-zA-Z0-9_\-]+)}$/);
-        return resources.find(({ type, name: x }) => type === "lang" && name === x);
+        return resources.find(({ type, name: x }) => type === "lang" && name === x).data[intl.locale];
     }
+    throw "unsupported template type";
 }
 
 export class View {
@@ -148,6 +167,11 @@ export class View {
     }
 
     setprops(argv, intl) {
+
+        if(typeof argv !== "object") {
+            argv = { [ DEFAULT ]: argv };
+        }
+
         this.props.targeting.map( ({ vl, target }) => {
             const value = templater(vl, intl, argv, this.props.resources);
             value !== null && (target.nodeValue = value);
