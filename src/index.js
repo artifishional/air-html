@@ -103,6 +103,10 @@ function templater(vl, intl = null, argv, resources) {
             const formatter = new NumberFormat(intl.locale, format);
             return formatter.format(+template);
         }
+        else if(template.indexOf("argv") === 0) {
+            const formatter = new NumberFormat(intl.locale, format);
+            return formatter.format(templater(`{${template}}`, intl, argv, resources));
+        }
         else {
             const formatter = new NumberFormat(intl.locale, {
                 ...format,
@@ -144,6 +148,8 @@ export class View {
         this.pid = pid;
         this.key = key;
 
+        this.argv = {};
+
         let targeting = [];
 
         if(node.tagName === "img") {
@@ -176,6 +182,11 @@ export class View {
             const value = templater(vl, intl, argv, this.props.resources);
             value !== null && (target.nodeValue = value);
         } );
+
+    }
+
+    getargv() {
+        return this.argv;
     }
 
     query(selector) {
