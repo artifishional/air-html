@@ -201,7 +201,7 @@ export class View {
     handleEvent(event) {
         this.handlers
             .find( ({ name }) => event.type === name )
-            .hn(event, this.props, ({...args} = {}) => this.handler({ dissolve: false, ...args }), this.key);
+            .hn.call(this.target, event, this.props, ({...args} = {}) => this.handler({ dissolve: false, ...args }), this.key);
     }
 
     add(...args) {
