@@ -104,8 +104,12 @@ function templater(vl, intl = null, argv, resources) {
             return formatter.format(+template);
         }
         else if(template.indexOf("argv") === 0) {
-            const formatter = new NumberFormat(intl.locale, format);
-            return formatter.format(templater(`{${template}}`, intl, argv, resources));
+            const res = templater(`{${template}}`, intl, argv, resources);
+            if(res !== null) {
+                const formatter = new NumberFormat(intl.locale, format);
+                return formatter.format(res);
+            }
+            return null;
         }
         else {
             const formatter = new NumberFormat(intl.locale, {
