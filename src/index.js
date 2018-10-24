@@ -140,8 +140,22 @@ function templater(vl, intl = null, argv, resources) {
     }
     else if(vl.indexOf("lang") === 1) {
         if(!intl) return null;
+
         const [_, name] = vl.match(/^{lang\.([a-zA-Z0-9_\-]+)}$/);
-        return resources.find(({ type, name: x }) => type === "lang" && name === x).data[intl.locale];
+        const template = resources.find(({ type, name: x }) => type === "lang" && name === x).data[intl.locale];
+
+        const templates = gtemplate(template).map( ({ vl, type }) => {
+            if(type === "template") {
+                return templater(vl, intl, argv, resources);
+            }
+            else {
+                return vl;
+            }
+        } );
+        if(templates.some(x => x === null)) {
+            return null;
+        }
+        return templates.join("");
     }
     throw "unsupported template type";
 }
@@ -156,7 +170,7 @@ export class View {
 
         let targeting = [];
 
-        if(node.tagName === "img") {
+        if(node.tagName === "IMG") {
             this.target = resources[0].image;
         }
         else {
