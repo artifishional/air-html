@@ -1,5 +1,21 @@
-const { NumberFormat } = Intl;
 const DEFAULT = "___default___";
+
+class NumberFormat {
+
+    constructor( locale, { splitter = null, ...options } = {} ) {
+        this.formatter = new Intl.NumberFormat( locale, options );
+        this.splitter = splitter;
+    }
+
+    format(num) {
+        let format = this.formatter.format(num);
+        if(this.splitter) {
+            format = format.replace( ",", this.splitter );
+        }
+        return format;
+    }
+
+}
 
 (function (arr) {
     arr.forEach(function (item) {
