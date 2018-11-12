@@ -240,13 +240,14 @@ export class View {
     }
 
     handleEvent(event) {
-        if(
-            event.type === "click" &&
-            event.currentTarget === window &&
-            this.handlers.find( ({name}) => name === "clickoutside" )
-        ) {
-            if(event.target !== this.target && !this.target.contains(event.target)) {
-                return this.handleEvent(new MouseEvent("clickoutside", event));
+        if(event.currentTarget === window) {
+            if(
+                event.type === "click" &&
+                this.handlers.find( ({name}) => name === "clickoutside" )
+            ) {
+                if(event.target !== this.target && !this.target.contains(event.target)) {
+                    this.handleEvent(new MouseEvent("clickoutside", event));
+                }
             }
         }
         else {
