@@ -201,7 +201,14 @@ export class View {
             }
             else {
                 this.handler = model.at( () => {} );
-                handlers.map( ({ name }) => this.target.addEventListener(name, this, false));
+                handlers.map( ({ name }) => {
+                    if(name === "clickoutside") {
+                        window.addEventListener("click", this, false);
+                    }
+                    else {
+                        this.target.addEventListener(name, this, false);
+                    }
+                });
             }
         }
     }
@@ -233,9 +240,26 @@ export class View {
     }
 
     handleEvent(event) {
-        this.handlers
-            .find( ({ name }) => event.type === name )
-            .hn.call(this.target, event, this.props, ({...args} = {}) => this.handler({ dissolve: false, ...args }), this.key);
+        if(
+            event.type === "click" &&
+            event.currentTarget === window &&
+            this.handlers.find( ({name}) => name === "clickoutside" )
+        ) {
+            if(event.target !== this.target && !this.target.contains(event.target)) {
+                return this.handleEvent(new MouseEvent("clickoutside", event));
+            }
+        }
+        else {
+            this.handlers
+                .find( ({ name }) => event.type === name )
+                .hn.call(
+                this.target,
+                event,
+                this.props,
+                ({...args} = {}) => this.handler({ dissolve: false, ...args }),
+                this.key
+            );
+        }
     }
 
     add(...args) {
@@ -256,7 +280,14 @@ export class View {
 
     clear() {
         if(this.handler) {
-            this.handlers.map( ({ name }) => this.target.removeEventListener(name, this, false));
+            this.handlers.map( ({ name }) => {
+                if(name === "clickoutside") {
+                    window.removeEventListener("click", this, false);
+                }
+                else {
+                    this.target.removeEventListener(name, this, false);
+                }
+            });
             this.handler();
         }
     }
