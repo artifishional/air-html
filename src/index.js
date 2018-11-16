@@ -205,6 +205,12 @@ export class View {
                     if(name === "clickoutside") {
                         window.addEventListener("click", this, false);
                     }
+                    else if(name === "globalkeydown") {
+                        window.addEventListener("keydown", this, false);
+                    }
+                    else if(name === "globalkeyup") {
+                        window.addEventListener("keyup", this, false);
+                    }
                     else {
                         this.target.addEventListener(name, this, false);
                     }
@@ -249,6 +255,18 @@ export class View {
                     this.handleEvent(new MouseEvent("clickoutside", event));
                 }
             }
+            if(
+                event.type === "keydown" &&
+                this.handlers.find( ({name}) => name === "globalkeydown" )
+            ) {
+                this.handleEvent(new KeyboardEvent("globalkeydown", event));
+            }
+            if(
+                event.type === "keyup" &&
+                this.handlers.find( ({name}) => name === "globalkeyup" )
+            ) {
+                this.handleEvent(new KeyboardEvent("globalkeyup", event));
+            }
         }
         else {
             this.handlers
@@ -284,6 +302,12 @@ export class View {
             this.handlers.map( ({ name }) => {
                 if(name === "clickoutside") {
                     window.removeEventListener("click", this, false);
+                }
+                else if(name === "globalkeydown") {
+                    window.removeEventListener("keydown", this, false);
+                }
+                else if(name === "globalkeyup") {
+                    window.removeEventListener("keyup", this, false);
                 }
                 else {
                     this.target.removeEventListener(name, this, false);
