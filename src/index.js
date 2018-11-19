@@ -3,6 +3,9 @@ const DEFAULT = "___default___";
 class NumberFormat {
 
     constructor( locale, { splitter = null, ...options } = {} ) {
+        if(splitter) {
+            locale = "ru";
+        }
         this.formatter = new Intl.NumberFormat( locale, options );
         this.splitter = splitter;
     }
