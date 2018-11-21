@@ -3,18 +3,18 @@ const DEFAULT = "___default___";
 class NumberFormat {
 
     constructor( locale, { splitter = null, ...options } = {} ) {
-        if(splitter) {
+        /*if(splitter) {
             locale = "ru";
-        }
+        }*/
         this.formatter = new Intl.NumberFormat( locale, options );
         this.splitter = splitter;
     }
 
     format(num) {
         let format = this.formatter.format(num);
-        if(this.splitter) {
+        /*if(this.splitter) {
             format = format.replace( ",", this.splitter );
-        }
+        }*/
         return format;
     }
 
@@ -155,7 +155,13 @@ function templater(vl, intl = null, argv, resources) {
         let [_, name] = vl.match(/^{argv((?:\.[a-zA-Z0-9_\-]+)*)}$/);
         name = name || DEFAULT;
         const path = name.split(".").filter(Boolean);
-        return getfrompath(argv, path);
+        const str = getfrompath(argv, path);
+        if(str && str[0] === "{" && str.slice(-1)[0] === "}") {
+            return templater(str, intl, argv, resources);
+        }
+        else {
+            return str;
+        }
     }
     else if(vl.indexOf("lang") === 1) {
         if(!intl) return null;
