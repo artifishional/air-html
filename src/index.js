@@ -1,5 +1,24 @@
-const { NumberFormat } = Intl;
 const DEFAULT = "___default___";
+
+class NumberFormat {
+
+    constructor( locale, { splitter = null, ...options } = {} ) {
+        /*if(splitter) {
+            locale = "ru";
+        }*/
+        this.formatter = new Intl.NumberFormat( locale, options );
+        this.splitter = splitter;
+    }
+
+    format(num) {
+        let format = this.formatter.format(num);
+        /*if(this.splitter) {
+            format = format.replace( ",", this.splitter );
+        }*/
+        return format;
+    }
+
+}
 
 (function (arr) {
     arr.forEach(function (item) {
@@ -104,8 +123,12 @@ function templater(vl, intl = null, argv, resources) {
             return formatter.format(+template);
         }
         else if(template.indexOf("argv") === 0) {
-            const formatter = new NumberFormat(intl.locale, format);
-            return formatter.format(templater(`{${template}}`, intl, argv, resources));
+            const res = templater(`{${template}}`, intl, argv, resources);
+            if(res !== null) {
+                const formatter = new NumberFormat(intl.locale, format);
+                return formatter.format(res);
+            }
+            return null;
         }
         else {
             const formatter = new NumberFormat(intl.locale, {
@@ -132,12 +155,32 @@ function templater(vl, intl = null, argv, resources) {
         let [_, name] = vl.match(/^{argv((?:\.[a-zA-Z0-9_\-]+)*)}$/);
         name = name || DEFAULT;
         const path = name.split(".").filter(Boolean);
-        return getfrompath(argv, path);
+        const str = getfrompath(argv, path);
+        if(str && str[0] === "{" && str.slice(-1)[0] === "}") {
+            return templater(str, intl, argv, resources);
+        }
+        else {
+            return str;
+        }
     }
     else if(vl.indexOf("lang") === 1) {
         if(!intl) return null;
+
         const [_, name] = vl.match(/^{lang\.([a-zA-Z0-9_\-]+)}$/);
-        return resources.find(({ type, name: x }) => type === "lang" && name === x).data[intl.locale];
+        const template = resources.find(({ type, name: x }) => type === "lang" && name === x).data[intl.locale];
+
+        const templates = gtemplate(template).map( ({ vl, type }) => {
+            if(type === "template") {
+                return templater(vl, intl, argv, resources);
+            }
+            else {
+                return vl;
+            }
+        } );
+        if(templates.some(x => x === null)) {
+            return null;
+        }
+        return templates.join("");
     }
     throw "unsupported template type";
 }
@@ -152,7 +195,7 @@ export class View {
 
         let targeting = [];
 
-        if(node.tagName === "img") {
+        if(node.tagName === "IMG") {
             this.target = resources[0].image;
         }
         else {
@@ -167,7 +210,20 @@ export class View {
             }
             else {
                 this.handler = model.at( () => {} );
-                handlers.map( ({ name }) => this.target.addEventListener(name, this, false));
+                handlers.map( ({ name }) => {
+                    if(name === "clickoutside") {
+                        window.addEventListener("click", this, false);
+                    }
+                    else if(name === "globalkeydown") {
+                        window.addEventListener("keydown", this, false);
+                    }
+                    else if(name === "globalkeyup") {
+                        window.addEventListener("keyup", this, false);
+                    }
+                    else {
+                        this.target.addEventListener(name, this, false);
+                    }
+                });
             }
         }
     }
@@ -199,9 +255,39 @@ export class View {
     }
 
     handleEvent(event) {
-        this.handlers
-            .find( ({ name }) => event.type === name )
-            .hn.call(this.target, event, this.props, ({...args} = {}) => this.handler({ dissolve: false, ...args }), this.key);
+        if(event.currentTarget === window) {
+            if(
+                event.type === "click" &&
+                this.handlers.find( ({name}) => name === "clickoutside" )
+            ) {
+                if(event.target !== this.target && !this.target.contains(event.target)) {
+                    this.handleEvent(new MouseEvent("clickoutside", event));
+                }
+            }
+            if(
+                event.type === "keydown" &&
+                this.handlers.find( ({name}) => name === "globalkeydown" )
+            ) {
+                this.handleEvent(new KeyboardEvent("globalkeydown", event));
+            }
+            if(
+                event.type === "keyup" &&
+                this.handlers.find( ({name}) => name === "globalkeyup" )
+            ) {
+                this.handleEvent(new KeyboardEvent("globalkeyup", event));
+            }
+        }
+        else {
+            this.handlers
+                .find( ({ name }) => event.type === name )
+                .hn.call(
+                this.target,
+                event,
+                this.props,
+                ({...args} = {}) => this.handler({ dissolve: false, ...args }),
+                this.key
+            );
+        }
     }
 
     add(...args) {
@@ -222,7 +308,20 @@ export class View {
 
     clear() {
         if(this.handler) {
-            this.handlers.map( ({ name }) => this.target.removeEventListener(name, this, false));
+            this.handlers.map( ({ name }) => {
+                if(name === "clickoutside") {
+                    window.removeEventListener("click", this, false);
+                }
+                else if(name === "globalkeydown") {
+                    window.removeEventListener("keydown", this, false);
+                }
+                else if(name === "globalkeyup") {
+                    window.removeEventListener("keyup", this, false);
+                }
+                else {
+                    this.target.removeEventListener(name, this, false);
+                }
+            });
             this.handler();
         }
     }
