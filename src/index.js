@@ -187,8 +187,8 @@ function templater(vl, intl = null, argv, resources) {
 
 export class View {
 
-    constructor({ key, node = document.createElement("div"), resources, pid, handlers = [], ...props } = {}, model) {
-        this.pid = pid;
+    constructor({ key, node = document.createElement("div"), resources, handlers = [], ...props } = {}, model) {
+
         this.key = key;
 
         this.argv = {};
@@ -202,7 +202,10 @@ export class View {
             this.target = node.cloneNode(true);
             targeting = gtargeting(this.target);
         }
-        this.props = { resources, pid, ...props, targeting };
+
+        this.slots = this.target.querySelectorAll(`m2-slot`);
+
+        this.props = { resources, ...props, targeting };
         this.handlers = handlers;
         if(handlers.length) {
             if(!model) {
@@ -290,16 +293,16 @@ export class View {
         }
     }
 
+    //todo fill ( only once )
     add(...args) {
-        args.map( ({ target, pid }) => {
-            const place = this.target.querySelector(`[data-pid="${pid}"]`);
-            if(place) {
-                place.parentNode.replaceChild( target, place );
-            }
-            else {
-                this.target.append( target );
-            }
-        } );
+        args.map( ({ target }, index) =>
+            this.slots[index].replaceWith( target )
+        );
+    }
+
+    replace(...args) {
+        this.target.textContent = "";
+        this.target.append( ...args.map( ({ target }) => target ) );
     }
 
     remove() {
