@@ -187,7 +187,13 @@ function templater(vl, intl = null, argv, resources) {
 
 export class View {
 
-    constructor({ key, node = document.createElement("div"), resources, handlers = [], ...props } = {}, model) {
+    constructor({
+                    key,
+                    node = document.createElement("div"),
+                    schema: [ , { handlers = [] } ],
+                    resources,
+                    ...props
+    } = {}, model) {
 
         this.key = key;
 
