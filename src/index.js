@@ -20,34 +20,6 @@ class NumberFormat {
 
 }
 
-(function (arr) {
-    arr.forEach(function (item) {
-        if (item.hasOwnProperty('before')) {
-            return;
-        }
-        Object.defineProperty(item, 'before', {
-            configurable: true,
-            enumerable: true,
-            writable: true,
-            value: function before() {
-                const argArr = Array.prototype.slice.call(arguments),
-                    docFrag = document.createDocumentFragment();
-
-                argArr.forEach(function (argItem) {
-                    const isNode = argItem instanceof Node;
-                    docFrag.appendChild(isNode ? argItem : document.createTextNode(String(argItem)));
-                });
-
-                this.parentNode.insertBefore(docFrag, this);
-            }
-        });
-    });
-})([
-    Element.prototype,
-    CharacterData.prototype,
-    DocumentType.prototype
-]);
-
 function gtemplate(str = "", ct = 0) {
     const len = str.length;
     let res = [];
@@ -82,7 +54,29 @@ function gtemplate(str = "", ct = 0) {
 }
 
 function gtargeting(parent, res = []) {
-    [...parent.childNodes].map(node => {
+
+    const targeting =
+        [...parent.querySelectorAll("setup")]
+            .map( node => {
+
+                const nodes = (node.innerText ? gtemplate(node.innerText) : [])
+                    .map( ({ vl, type }) => ({ vl, type, target: new Text(vl) }) );
+
+                const targeting = nodes.filter(({type}) => type === "template");
+                res.push(...targeting);
+
+                if(targeting.length) {
+                    node.before(...nodes.map(({target}) => target));
+                }
+
+                node.remove();
+            } )
+    ;
+
+    return res;
+
+
+    /*[...parent.childNodes].map(node => {
         if(node.tagName === "style") { }
         else if(node.nodeType === 3) {
             const nodes = gtemplate(node.nodeValue)
@@ -98,7 +92,7 @@ function gtargeting(parent, res = []) {
             gtargeting(node, res);
         }
     });
-    return res;
+    return res;*/
 }
 
 function getfrompath(argv, path) {
