@@ -1,5 +1,18 @@
 const DEFAULT = "___default___";
 
+const events =  [
+    "onclickoutside",
+    "onpointermove",
+    "onclick",
+    "onpointerenter",
+    "onpointerleave",
+    "onglobalkeydown",
+    "onglobalkeyup",
+    "onkeydown",
+    "onkeyup",
+    "onwheel",
+];
+
 class NumberFormat {
 
     constructor( locale, { splitter = null, ...options } = {} ) {
@@ -53,6 +66,21 @@ function gtemplate(str = "", ct = 0) {
     return res;
 }
 
+function ghandlers( node ) {
+    return [].concat(
+        ...[...node.querySelectorAll("setup")]
+            .map( node => {
+                return [ ...node.attributes ]
+                    .filter( ({ name }) => events.includes(name) )
+                    .map( ({ name, value }) => ({
+                        node: node.parentNode,
+                        name: name.replace(/^on/, ""),
+                        hn: new Function("event", "options", "action", "key", value )
+                    }) );
+            } )
+    );
+}
+
 function gtargeting(parent, res = []) {
 
     const targeting =
@@ -61,7 +89,7 @@ function gtargeting(parent, res = []) {
 
                 const nodes = (node.innerText ? gtemplate(node.innerText) : [])
                     .map( ({ vl, type }) => ({ vl, type, target: new Text(vl) }) );
-
+                
                 const targeting = nodes.filter(({type}) => type === "template");
                 res.push(...targeting);
 
@@ -184,24 +212,23 @@ export class View {
     constructor({
                     key,
                     node = document.createElement("div"),
-                    schema: [ , { handlers = [] } ],
                     resources,
                     ...props
-    } = {}, model) {
+                } = {}, model) {
 
         this.key = key;
 
         this.argv = {};
-
-        let targeting = [];
 
         if(node.tagName === "IMG") {
             this.target = resources[0].image;
         }
         else {
             this.target = node.cloneNode(true);
-            targeting = gtargeting(this.target);
         }
+
+        const handlers = ghandlers( this.target );
+        const targeting = gtargeting( this.target );
 
         this.slots = this.target.querySelectorAll(`m2-slot`);
 
@@ -213,7 +240,7 @@ export class View {
             }
             else {
                 this.handler = model.at( () => {} );
-                handlers.map( ({ name }) => {
+                handlers.map( ({ node, name }) => {
                     if(name === "clickoutside") {
                         window.addEventListener("click", this, false);
                     }
@@ -224,7 +251,7 @@ export class View {
                         window.addEventListener("keyup", this, false);
                     }
                     else {
-                        this.target.addEventListener(name, this, false);
+                        node.addEventListener(name, this, false);
                     }
                 });
             }
@@ -249,7 +276,10 @@ export class View {
     }
 
     query(selector) {
-        if(selector) {
+        if(Number.isInteger(selector)) {
+            return this.selectors[selector].target;
+        }
+        else if(selector) {
             return this.target.querySelector(selector.replace(/\//g, "\\\/"));
         }
         else {
@@ -259,11 +289,9 @@ export class View {
 
     handleEvent(event) {
         if(event.currentTarget === window) {
-            if(
-                event.type === "click" &&
-                this.handlers.find( ({name}) => name === "clickoutside" )
-            ) {
-                if(event.target !== this.target && !this.target.contains(event.target)) {
+            const { node } = this.handlers.find( ({name}) => name === "clickoutside" ) || {};
+            if( event.type === "click" && node ) {
+                if(event.target !== node && !node.contains(event.target)) {
                     this.handleEvent(new MouseEvent("clickoutside", event));
                 }
             }
@@ -281,10 +309,9 @@ export class View {
             }
         }
         else {
-            this.handlers
-                .find( ({ name }) => event.type === name )
-                .hn.call(
-                this.target,
+            const { hn, node } = this.handlers.find( ({ name }) => event.type === name );
+            hn.call(
+                node,
                 event,
                 this.props,
                 ({...args} = {}) => this.handler({ dissolve: false, ...args }),
@@ -295,9 +322,14 @@ export class View {
 
     //todo fill ( only once )
     add(...args) {
-        args.map( ({ target }, index) =>
-            this.slots[index].replaceWith( target )
-        );
+        args.map( ({ target }, index) => {
+            if(target.tagName === "UNIT" || target.tagName === "M2-UNIT") {
+                this.slots[index].replaceWith(...target.children);
+            }
+            else {
+                this.slots[index].replaceWith(target);
+            }
+        });
     }
 
     replace(...args) {
@@ -311,7 +343,7 @@ export class View {
 
     clear() {
         if(this.handler) {
-            this.handlers.map( ({ name }) => {
+            this.handlers.map( ({ node, name }) => {
                 if(name === "clickoutside") {
                     window.removeEventListener("click", this, false);
                 }
@@ -322,7 +354,7 @@ export class View {
                     window.removeEventListener("keyup", this, false);
                 }
                 else {
-                    this.target.removeEventListener(name, this, false);
+                    node.removeEventListener(name, this, false);
                 }
             });
             this.handler();
