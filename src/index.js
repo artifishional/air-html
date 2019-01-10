@@ -66,40 +66,23 @@ function gtemplate(str = "", ct = 0) {
     return res;
 }
 
-function ghandlers( node ) {
-    return [].concat(
-        ...[...node.querySelectorAll("setup")]
-            .map( node => {
-                return [ ...node.attributes ]
-                    .filter( ({ name }) => events.includes(name) )
-                    .map( ({ name, value }) => ({
-                        node: node.parentNode,
-                        name: name.replace(/^on/, ""),
-                        hn: new Function("event", "options", "action", "key", value )
-                    }) );
-            } )
-    );
-}
-
 function gtargeting(parent, res = []) {
 
-    const targeting =
-        [...parent.querySelectorAll("setup")]
-            .map( node => {
+    [...parent.querySelectorAll("setup")]
+        .map( node => {
 
-                const nodes = (node.innerText ? gtemplate(node.innerText) : [])
-                    .map( ({ vl, type }) => ({ vl, type, target: new Text(vl) }) );
-                
-                const targeting = nodes.filter(({type}) => type === "template");
-                res.push(...targeting);
+            const nodes = (node.innerText ? gtemplate(node.innerText) : [])
+                .map( ({ vl, type }) => ({ vl, type, target: new Text(vl) }) );
 
-                if(targeting.length) {
-                    node.before(...nodes.map(({target}) => target));
-                }
+            const targeting = nodes.filter(({type}) => type === "template");
+            res.push(...targeting);
 
-                node.remove();
-            } )
-    ;
+            if(targeting.length) {
+                node.before(...nodes.map(({target}) => target));
+            }
+
+            node.remove();
+        } );
 
     return res;
 
@@ -213,6 +196,7 @@ export class View {
                     key,
                     node = document.createElement("div"),
                     resources,
+                    handlers = [],
                     ...props
                 } = {}, model) {
 
@@ -227,7 +211,12 @@ export class View {
             this.target = node.cloneNode(true);
         }
 
-        const handlers = ghandlers( this.target );
+        this._active = ["UNIT", "M2-UNIT"].includes(this.target.tagName) ?
+            this.target.children[0] : this.target
+        ;
+
+
+        //const handlers = ghandlers( this.target );
         const targeting = gtargeting( this.target );
 
         this.slots = this.target.querySelectorAll(`m2-slot`);
@@ -240,7 +229,7 @@ export class View {
             }
             else {
                 this.handler = model.at( () => {} );
-                handlers.map( ({ node, name }) => {
+                handlers.map( ({ name }) => {
                     if(name === "clickoutside") {
                         window.addEventListener("click", this, false);
                     }
@@ -251,7 +240,7 @@ export class View {
                         window.addEventListener("keyup", this, false);
                     }
                     else {
-                        node.addEventListener(name, this, false);
+                        this._active.addEventListener(name, this, false);
                     }
                 });
             }
@@ -275,23 +264,14 @@ export class View {
         return this.argv;
     }
 
-    query(selector) {
-        if(Number.isInteger(selector)) {
-            return this.selectors[selector].target;
-        }
-        else if(selector) {
-            return this.target.querySelector(selector.replace(/\//g, "\\\/"));
-        }
-        else {
-            return this.target;
-        }
+    query() {
+        return this._active;
     }
 
     handleEvent(event) {
         if(event.currentTarget === window) {
-            const { node } = this.handlers.find( ({name}) => name === "clickoutside" ) || {};
-            if( event.type === "click" && node ) {
-                if(event.target !== node && !node.contains(event.target)) {
+            if( event.type === "click" && this.handlers.find( ({name}) => name === "clickoutside" ) ) {
+                if(event.target !== this._active && !this._active.contains(event.target)) {
                     this.handleEvent(new MouseEvent("clickoutside", event));
                 }
             }
@@ -309,9 +289,9 @@ export class View {
             }
         }
         else {
-            const { hn, node } = this.handlers.find( ({ name }) => event.type === name );
+            const { hn } = this.handlers.find( ({ name }) => event.type === name );
             hn.call(
-                node,
+                this._active,
                 event,
                 this.props,
                 ({...args} = {}) => this.handler({ dissolve: false, ...args }),
@@ -343,7 +323,7 @@ export class View {
 
     clear() {
         if(this.handler) {
-            this.handlers.map( ({ node, name }) => {
+            this.handlers.map( ({ name }) => {
                 if(name === "clickoutside") {
                     window.removeEventListener("click", this, false);
                 }
@@ -354,7 +334,7 @@ export class View {
                     window.removeEventListener("keyup", this, false);
                 }
                 else {
-                    node.removeEventListener(name, this, false);
+                    this._active.removeEventListener(name, this, false);
                 }
             });
             this.handler();
