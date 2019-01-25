@@ -156,12 +156,24 @@ function templater(vl, intl = null, argv, resources) {
         name = name || DEFAULT;
         const path = name.split(".").filter(Boolean);
         const str = getfrompath(argv, path);
-        if(str && str[0] === "{" && str.slice(-1)[0] === "}") {
-            return templater(str, intl, argv, resources);
+
+        if(!str) return str;
+
+        const templates = gtemplate(str).map( ({ vl, type }) => {
+            if(type === "template") {
+                return templater(vl, intl, argv, resources);
+            }
+            else {
+                return vl;
+            }
+        } );
+
+        if(templates.some(x => x === null)) {
+            return null;
         }
-        else {
-            return str;
-        }
+
+        return templates.join("");
+
     }
     else if(vl.indexOf("lang") === 1) {
         if(!intl) return null;
