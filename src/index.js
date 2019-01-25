@@ -155,24 +155,31 @@ function templater(vl, intl = null, argv, resources) {
         let [_, name] = vl.match(/^{argv((?:\.[a-zA-Z0-9_\-]+)*)}$/);
         name = name || DEFAULT;
         const path = name.split(".").filter(Boolean);
-        const str = getfrompath(argv, path);
+        let str = getfrompath(argv, path);
 
         if(!str) return str;
 
-        const templates = gtemplate(str).map( ({ vl, type }) => {
-            if(type === "template") {
-                return templater(vl, intl, argv, resources);
-            }
-            else {
-                return vl;
-            }
-        } );
+        str += "";
 
-        if(templates.some(x => x === null)) {
-            return null;
+        if(str.indexOf("{") > -1) {
+            const templates = gtemplate(str).map( ({ vl, type }) => {
+                if(type === "template") {
+                    return templater(vl, intl, argv, resources);
+                }
+                else {
+                    return vl;
+                }
+            } );
+
+            if(templates.some(x => x === null)) {
+                return null;
+            }
+
+            return templates.join("");
         }
-
-        return templates.join("");
+        else {
+            return str;
+        }
 
     }
     else if(vl.indexOf("lang") === 1) {
