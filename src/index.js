@@ -186,8 +186,8 @@ function templater(vl, intl = null, argv, resources) {
         if(!intl) return null;
 
         const [_, name] = vl.match(/^{lang\.([a-zA-Z0-9_\-]+)}$/);
-        const template = resources.find(({ type, name: x }) => type === "lang" && name === x).data[intl.locale];
-
+        const raw = resources.find(({ type, name: x }) => type === "lang" && name === x);
+        const template = raw ? raw.data[intl.locale] : `lang "${name}" not found`;
         const templates = gtemplate(template).map( ({ vl, type }) => {
             if(type === "template") {
                 return templater(vl, intl, argv, resources);
